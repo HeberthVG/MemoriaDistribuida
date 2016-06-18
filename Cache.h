@@ -9,35 +9,35 @@
 
 struct block{
     int tag;
+    int state;
 };
 
 class Cache{
 public:
-	Cache(int blockSize, int CSize, int asoc);
-	///constructor de copia.
-	//~Cache();
-	///destructor del objeto.
+    ///Constructor.
+    Cache(int blockSize, int CSize, int asoc);
+
+    ///Lee el bloque.
     block read(int index, int asoc);
-    //Lee el bloque.
+    ///Escribe en un bloque en la dirección dir.
     void write(int index, int asoc, int tag);
-    //Escribe en un bloque en la dirección dir.
+    ///Incrementa el contador del miss o el hit
     void hitRp();
     void missRp();
     void hitWp();
     void missWp();
-    //Incrementa el contador del miss o el hit
+    ///Devuelve la cantidad de hit o miss.    
     int gethitR();
     int getmissR();
     int gethitW();
     int getmissW();
-    //Devuelve la cantidad de hit o miss.
-    
-	
+    ///Cambia el estado de una linea del cache
+    void setState(int index, int asoc, int state);
 	
 private:
-	int blockSize, cacheSize, bNum, asoc, bsets, hitR, missR, hitW, missW, boffset, bindex, btag;
-    //Se define los parámetros del cache.
-    block **mema;
-    //Se define el espacio en memoria que contiene los bloques.
+    ///Se define los parámetros del cache.
+    int blockSize, cacheSize, bNum, asoc, bsets, hitR, missR, hitW, missW, boffset, bindex, btag;
+    ///Se define el espacio en memoria que contiene los bloques.
+    block **mema;    
 };
 #endif
