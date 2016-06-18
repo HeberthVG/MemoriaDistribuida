@@ -2,6 +2,8 @@
 #para crear el ejecutable.
 OBJS = Cache.cpp
 CMP = Cache.o
+OBJS1 = Prime.cpp
+CMP1 = Prime.o
 
 #Se define el compilador
 CC = g++
@@ -17,13 +19,20 @@ LFLAGS = -Wall $(DEBUG) -pedantic
 
 #Archivo Ejecutable que se va a crear
 TARGET = Run
+TARGET1 = RunPrime
 
 #Reglas a ejecutar cuando se ejecute make
-all: $(TARGET)
+all: $(TARGET) $(TARGET1)
+
 $(TARGET):
 $(TARGET) : $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -c
 	$(CC) $(CFLAGS) -o $(TARGET) main.cpp $(CMP)
+	
+$(TARGET1):
+$(TARGET1) : $(OBJS1)
+	$(CC) $(CFLAGS) $(OBJS1) -c
+	$(CC) $(CFLAGS) -o $(TARGET1) mainPrime.cpp $(CMP1)
 
 
 #Al digitar make clean se borraran todos los archivos compilados,
@@ -31,3 +40,5 @@ $(TARGET) : $(OBJS)
 clean:
 	rm -rf ∗.o *.gch *.dSYM $(CMP)
 	rm -rf ∗.o *.gch *.dSYM $(TARGET)
+	rm -rf ∗.o *.gch *.dSYM $(CMP1)
+	rm -rf ∗.o *.gch *.dSYM $(TARGET1)
