@@ -32,58 +32,29 @@ PrimeMPI::PrimeMPI(int argc, char ** argv, int n)
 		MPI_Comm_rank(MPI_COMM_WORLD, &id);
 		MPI_Get_processor_name(host, &largo);
 		
-		int *primeVloc;
 		this->n=n;
 		if(id==0)
 		{
    			primeV=new int [n]();
    			for(int i=2; i<=n;i++) primeV[i]=i;	
    		}
-   		else
-   		{
-   			primeVloc=new int [n]();
-   			for(int i=2; i<=n;i++) primeVloc[i]=i;	
-   		}
    		
-   		for(int i=2; i<=n;i++) this->primeV[i]=i;
-   		for(int i=2+id; i*i<=n;i+procs)
+   		MPI_Bcast(&primeV, n, MPI_INT, 0, MPI_COMM_WORLD);
+   		
+   		for(int i=2+id; i*i<=n;i+=procs)
    		{
     		if(this->primeV[i]!=0)
     		{
     			for(int j=i; j*i<=n;++j) 
     			{
-    				if(id!=0)
-    				{
-    					primeVloc[j*i]=0;
-    				}
-    				else
-    				{
-    					primeV[j*i]=0;
-    				}
+    				primeV[j*i]=0;
     			}
     		}
     	}
     	
+    	MPI_Barrier(MPI_COMM_WORLD);
     	//Se reciben los datos.
-    	if(id!=0)
-    	{
-    		MPI_Send(&primeVloc, n, MPI_INT, 0, 0, MPI_COMM_WORLD);
-    	}
-    	else
-    	{
-    		for(int i=1; i<procs; i++)
-    		{
-    			MPI_Recv(&primeVloc, n, MPI_INT, i, 0, MPI_COMM_WORLD, &stat);
-    			for(int j=0; j<=n; j++)
-    			{
-    				if(primeVloc[j]==0)
-    				{
-    					primeV[j]=0;
-    				}
-    				
-    			}
-			}	
-    	}
+    	MPI_Reduce(&primeV, primeV, n, MPI_INT, MPI_PROD, 0, MPI_COMM_WORLD);
     
     	MPI_Finalize();
     	this->primeV=primeV;
