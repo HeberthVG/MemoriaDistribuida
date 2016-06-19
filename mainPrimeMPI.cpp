@@ -1,12 +1,12 @@
-#include"Prime.h"
+#include"PrimeMPI.h"
 
 using namespace std;
 
-int main() {
+int main(int argc, char ** argv) {
     
     clock_t begin = clock();
     
-    Prime newPrime(5000);
+    PrimeMPI newPrime(argc, argv, 5000);
     newPrime.print();
     
     clock_t end = clock();

@@ -32,7 +32,6 @@ Prime::Prime(int n)
 //Se define el constructor.
 
 
-
 void Prime::print(){
     cout<<"Imprimiendo los numeros primos...\n";
 	for(int i=2; i<=n;++i)
