@@ -4,13 +4,13 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     
-    unsigned int dir, maskIndexL1, maskIndexL2, maskOffSet, maskTagL1, maskTagL2;
+    unsigned int dir, maskIndexL1, maskIndexL2, maskOffSet, maskTagL1, maskTagL2, tmpDir;
     int i, remp, CI;
     
     ///Caracteristicas de los caches
     int tamL1 = 8000, tamL2 = 64000, tamB = 16, asoc = 1;
     ///Variables de cada cache
-    int numBL1, numBL2, setsL1, setsL2, bOffSet, bIndexL1, bIndexL12, bIndexL2, bTagL1, bTagL12, bTagL2;
+    int numBL1, numBL2, setsL1, setsL2, bOffSet, bIndexL1, bIndexL2, bTagL1, bTagL2;
     char tipo;
     bool nohit;
     
@@ -30,8 +30,7 @@ int main(int argc, char* argv[]) {
     Cache CacheL12(tamB, tamL1, asoc);
     Cache CacheL2(tamB, tamL2, asoc);
     
-    //cout << "btag " << btag << " bindex " << bindex << " bBoffset " << bBoffset << endl;
-    int OffSet, tagL2, tagL1, indexL2, indexL1;
+    int OffSet, tagL2, tagL1, indexL2, indexL1, tmpIndex, tmpTag;
     
     
     ///Verifica si el archivo .trace se encuentra en el directorio.
@@ -53,38 +52,35 @@ int main(int argc, char* argv[]) {
     ///Se inicializan contadores
     CI = 0;
     srand(time(0));
+
+    ///Se crea el archivo de salida
+    ofstream outputFile("MESI_Protocol.txt");
     while (!inst.eof()) { ///Verifica si faltan lineas por leer
         CI++;
+
+	///Se lee la direccion y se calcula el ByteOffset, el index y el tag
         inst >> hex >> dir;
-        //cout << i << ". Direccion: " << dir;
         
-        //cout << " Byte-offset: ";
         OffSet = dir & maskOffSet;
-        //cout << Boffset;
-        
-        //cout << " Index: ";
+
         indexL1 = (dir & maskIndexL1) / pow(2,bOffSet);
         indexL2 = (dir & maskIndexL2) / pow(2,bOffSet);
-        //cout << index;
-        
-        //cout << " Tag: ";
+
         tagL1 = (dir & maskTagL1) / pow(2,bOffSet+bIndexL1);
         tagL2 = (dir & maskTagL2) / pow(2,bOffSet+bIndexL2);
-        //cout << tag;
         
         inst >> tipo;
-        //cout << " Tipo: " << tipo << endl;
         
         nohit = true;
         
 	///Si la instruccion es par se llama al CPU1 (CacheL12)
-	if(CI%2) { 
+	if(!(CI%2)) {
             switch (tipo) {
 		case 'L':
                     for(i=0; i<asoc; i++) {
 			remp = rand()%asoc;
-                	///Revisa si el tag coincide con todos los posible campos
-                	if (tagL1==CacheL12.read(indexL1, i).tag) {
+                	///Revisa si el tag coincide con todos los posible campos y es valido
+                	if (tagL1==CacheL12.read(indexL1, i).tag && CacheL12.read(indexL1, i).state!=3) {
                             nohit = false;
 			    ///Comprueba si el dato esta en el otro cache
 			    if (tagL1==CacheL11.read(indexL1, i).tag) {
@@ -92,6 +88,20 @@ int main(int argc, char* argv[]) {
 				    ///Modified
 				    case 0:
 					CacheL12.missRp();
+					///Se debe actualizar el dato en la memoria anterior
+					CacheL2.write(indexL2, remp, tagL2);
+					CacheL2.setState(indexL2, remp, 2);
+					///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL12.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L12
+					    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
+					///Se copia el dato actualizado en el cache L12
 					CacheL12.write(indexL1, remp, tagL1);
 					CacheL12.setState(indexL1, remp, 2);
 					CacheL11.setState(indexL1, remp, 2);
@@ -99,36 +109,66 @@ int main(int argc, char* argv[]) {
 				    ///Exclusive
 				    case 1:
 					CacheL12.missRp();
+					///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL12.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L12
+					    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
 					CacheL12.write(indexL1, remp, tagL1);
 					CacheL12.setState(indexL1, remp, 2);
 					CacheL11.setState(indexL1, remp, 2);
+					CacheL2.setState(indexL2, remp, 2);
+					break;
+				    ///Shared
+				    case 2:
+                            		CacheL12.hitRp();
+					CacheL12.setState(indexL1, remp, 2);
+					CacheL2.setState(indexL2, remp, 2);
 					break;
 				    ///Invalid
 				    case 3:
                             		CacheL12.hitRp();
 					CacheL12.setState(indexL1, remp, 1);
+					CacheL2.setState(indexL2, remp, 1);
 					break;
 				    default:
-                            		CacheL12.hitRp();
-					CacheL12.setState(indexL1, remp, 2);
 					break;
 				}
 			    } else {
 				CacheL12.hitRp();
 				CacheL12.setState(indexL1, remp, 1);
+				CacheL2.setState(indexL1, remp, 1);
 			    }
                             break;
                         }
                     }
-                    ///Si el tag no coincide trae todo un nuevo bloque al cache
+                    ///Si el tag no coincide o el dato es invalido trae todo un nuevo bloque al cache
                     if(nohit) {
-			///Reemplaza uno de los bloques al azar
                         CacheL12.missRp();
+			///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL12.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L12
+			    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
 			///Comprueba si el dato esta en el otro cache
-			if (tagL1==CacheL11.read(indexL1, i).tag) {
-			    switch (CacheL11.read(indexL1, i).state) {
+			if (tagL1==CacheL11.read(indexL1, 0).tag) {
+			    switch (CacheL11.read(indexL1, 0).state) {
 				///Modified
 				case 0:
+				    ///Se debe actualizar el dato en la memoria anterior
+				    CacheL2.write(indexL2, remp, tagL2);
+				    CacheL2.setState(indexL2, remp, 2);
+				    ///Se copia el dato actualizado en el cache L12
 				    CacheL12.write(indexL1, remp, tagL1);
 				    CacheL12.setState(indexL1, remp, 2);
 				    CacheL11.setState(indexL1, remp, 2);
@@ -138,41 +178,70 @@ int main(int argc, char* argv[]) {
 				    CacheL12.write(indexL1, remp, tagL1);
 				    CacheL12.setState(indexL1, remp, 2);
 				    CacheL11.setState(indexL1, remp, 2);
+				    CacheL2.setState(indexL2, remp, 2);
+				    break;
+				///Shared
+				case 2:
+				    CacheL12.write(indexL1, remp, tagL1);
+				    CacheL12.setState(indexL1, remp, 2);
+				    CacheL2.setState(indexL2, remp, 2);
 				    break;
 				///Invalid
 				case 3:
 				    CacheL12.write(indexL1, remp, tagL1);
 				    CacheL12.setState(indexL1, remp, 1);
+				    CacheL2.setState(indexL2, remp, 1);
 				    break;
 				default:
-				    CacheL12.write(indexL1, remp, tagL1);
-				    CacheL12.setState(indexL1, remp, 2);
 				    break;
 			    }
-			} else {
+			} else if (tagL2==CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
 			    CacheL12.write(indexL1, remp, tagL1);
 			    CacheL12.setState(indexL1, remp, 1);
-			}   
+			    CacheL2.setState(indexL2, remp, 1);
+			} else { ///Se trae el bloque primero al cache L2
+			    CacheL2.write(indexL2, remp, tagL2);
+			    CacheL12.write(indexL1, remp, tagL1);
+			    CacheL12.setState(indexL1, remp, 1);
+			    CacheL2.setState(indexL2, remp, 1);
+			} 
                     }
                     break;
                 case 'S':
 		    remp = rand()%asoc;
                     for(i=0; i<asoc; i++) {
-			///Revisa si el tag coincide con todos los posible campos
-                        if (tagL1==CacheL12.read(indexL1, i).tag) {
+			///Revisa si el tag coincide con todos los posible campos y el dato es valido
+                        if (tagL1==CacheL12.read(indexL1, i).tag && CacheL12.read(indexL1, i).state!=3) {
                            CacheL12.hitWp();
-                           nohit = false;
+                           nohit = false;								
                            break;
                         }
                     }
-                    ///Si el tag no coincide entonces se escribe en memoria.
+                    ///Si el tag no coincide debe traerse la instruccion de la memoria anterior.
                     if(nohit) {
-			///Reemplaza uno de los bloques al azar
                         CacheL12.missWp();
-                        CacheL12.write(indexL1, remp, tagL1);     
+			if (tagL2!=CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
+			    CacheL2.write(indexL2, remp, tagL2);
+			}
+			///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL12.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L12
+			    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
+			///Reemplaza uno de los bloques al azar
+			CacheL12.write(indexL1, remp, tagL1);     
                     }
+		    ///Si esta en otro cache se debe invalidar
+		    if (tagL1==CacheL11.read(indexL1, 0).tag) {
+			CacheL11.setState(indexL1, remp, 3);
+		    }
 		    CacheL12.setState(indexL1, remp, 0);
-		    CacheL11.setState(indexL1, remp, 3);
+		    CacheL2.setState(indexL2, remp, 1);
                     break;     
                 default:
                     break;
@@ -181,81 +250,186 @@ int main(int argc, char* argv[]) {
             switch (tipo) {
 		case 'L':
                     for(i=0; i<asoc; i++) {
-                	///Revisa si el tag coincide con todos los posible campos
-                	if (tagL1==CacheL11.read(indexL1, i).tag) {
-                            CacheL11.hitRp();
+			remp = rand()%asoc;
+                	///Revisa si el tag coincide con todos los posible campos y es valido
+                	if (tagL1==CacheL11.read(indexL1, i).tag && CacheL11.read(indexL1, i).state!=3) {
                             nohit = false;
+			    ///Comprueba si el dato esta en el otro cache
+			    if (tagL1==CacheL12.read(indexL1, i).tag) {
+				switch (CacheL12.read(indexL1, i).state) {
+				    ///Modified
+				    case 0:
+					CacheL11.missRp();
+					///Se debe actualizar el dato en la memoria anterior
+					CacheL2.write(indexL2, remp, tagL2);
+					CacheL2.setState(indexL2, remp, 2);
+					///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL11.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L11
+					    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
+					///Se copia el dato actualizado en el cache L11
+					CacheL11.write(indexL1, remp, tagL1);
+					CacheL11.setState(indexL1, remp, 2);
+					CacheL12.setState(indexL1, remp, 2);
+					break;
+				    ///Exclusive
+				    case 1:
+					CacheL11.missRp();
+					///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL11.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L11
+					    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
+					CacheL11.write(indexL1, remp, tagL1);
+					CacheL11.setState(indexL1, remp, 2);
+					CacheL12.setState(indexL1, remp, 2);
+					CacheL2.setState(indexL2, remp, 2);
+					break;
+				    ///Shared
+				    case 2:
+                            		CacheL11.hitRp();
+					CacheL11.setState(indexL1, remp, 2);
+					CacheL2.setState(indexL2, remp, 2);
+					break;
+				    ///Invalid
+				    case 3:
+                            		CacheL11.hitRp();
+					CacheL11.setState(indexL1, remp, 1);
+					CacheL2.setState(indexL2, remp, 1);
+					break;
+				    default:
+					break;
+				}
+			    } else {
+				CacheL11.hitRp();
+				CacheL11.setState(indexL1, remp, 1);
+				CacheL2.setState(indexL1, remp, 1);
+			    }
                             break;
                         }
                     }
-                    ///Si el tag no coincide trae todo un nuevo bloque al cache
+                    ///Si el tag no coincide o el dato es invalido trae todo un nuevo bloque al cache
                     if(nohit) {
-			///Reemplaza uno de los bloques al azar
                         CacheL11.missRp();
-                        remp = rand()%asoc;
-                        CacheL11.write(indexL1, remp, tagL1);    
+			///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL11.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L11
+			    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
+			///Comprueba si el dato esta en el otro cache
+			if (tagL1==CacheL12.read(indexL1, 0).tag) {
+			    switch (CacheL12.read(indexL1, 0).state) {
+				///Modified
+				case 0:
+				    ///Se debe actualizar el dato en la memoria anterior
+				    CacheL2.write(indexL2, remp, tagL2);
+				    CacheL2.setState(indexL2, remp, 2);
+				    ///Se copia el dato actualizado en el cache L12
+				    CacheL11.write(indexL1, remp, tagL1);
+				    CacheL11.setState(indexL1, remp, 2);
+				    CacheL12.setState(indexL1, remp, 2);
+				    break;
+				///Exclusive
+				case 1:
+				    CacheL11.write(indexL1, remp, tagL1);
+				    CacheL11.setState(indexL1, remp, 2);
+				    CacheL12.setState(indexL1, remp, 2);
+				    CacheL2.setState(indexL2, remp, 2);
+				    break;
+				///Shared
+				case 2:
+				    CacheL11.write(indexL1, remp, tagL1);
+				    CacheL11.setState(indexL1, remp, 2);
+				    CacheL2.setState(indexL2, remp, 2);
+				    break;
+				///Invalid
+				case 3:
+				    CacheL11.write(indexL1, remp, tagL1);
+				    CacheL11.setState(indexL1, remp, 1);
+				    CacheL2.setState(indexL2, remp, 1);
+				    break;
+				default:
+				    break;
+			    }
+			} else if (tagL2==CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
+			    CacheL11.write(indexL1, remp, tagL1);
+			    CacheL11.setState(indexL1, remp, 1);
+			    CacheL2.setState(indexL2, remp, 1);
+			} else { ///Se trae el bloque primero al cache L2
+			    CacheL2.write(indexL2, remp, tagL2);
+			    CacheL11.write(indexL1, remp, tagL1);
+			    CacheL11.setState(indexL1, remp, 1);
+			    CacheL2.setState(indexL2, remp, 1);
+			} 
                     }
                     break;
                 case 'S':
+		    remp = rand()%asoc;
                     for(i=0; i<asoc; i++) {
-			///Revisa si el tag coincide con todos los posible campos
-                        if (tagL1==CacheL11.read(indexL1, i).tag) {
+			///Revisa si el tag coincide con todos los posible campos y el dato es valido
+                        if (tagL1==CacheL11.read(indexL1, i).tag && CacheL11.read(indexL1, i).state!=3) {
                            CacheL11.hitWp();
                            nohit = false;
                            break;
                         }
                     }
-                    ///Si el tag no coincide entonces se escribe en memoria.
+                    ///Si el tag no coincide debe traerse la instruccion de la memoria anterior.
                     if(nohit) {
-			///Reemplaza uno de los bloques al azar
+			///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL11.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L11
+			    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
                         CacheL11.missWp();
-                        remp = rand()%asoc;
-                        CacheL11.write(indexL1, remp, tagL1);     
+			if (tagL2!=CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
+			    CacheL2.write(indexL2, remp, tagL2);
+			}
+			///Reemplaza uno de los bloques al azar
+			CacheL11.write(indexL1, remp, tagL1);    
                     }
+		    ///Si esta en otro cache se debe invalidar
+		    if (tagL1==CacheL12.read(indexL1, 0).tag) {
+			CacheL12.setState(indexL1, remp, 3);
+		    }
+		    CacheL11.setState(indexL1, remp, 0);
+		    CacheL2.setState(indexL2, remp, 1); 
                     break;     
                 default:
                     break;
 	    }
-	}        
-        
-    }//
-   
-    ///Calcula los miss rate. 
-    float missrateRL11=100*((float)CacheL11.getmissR()/((float)CacheL11.getmissR()+(float)CacheL11.gethitR()));
-    float missrateWL11=100*(float)CacheL11.getmissW()/((float)CacheL11.getmissW()+(float)CacheL11.gethitW());
-    float missrateTL11=100*((float)CacheL11.getmissR()+(float)CacheL11.getmissW())/((float)CacheL11.getmissR()+(float)CacheL11.gethitR()+(float)CacheL11.getmissW()+(float)CacheL11.gethitW());
-    float missrateRL12=100*((float)CacheL12.getmissR()/((float)CacheL12.getmissR()+(float)CacheL12.gethitR()));
-    float missrateWL12=100*(float)CacheL12.getmissW()/((float)CacheL12.getmissW()+(float)CacheL12.gethitW());
-    float missrateTL12=100*((float)CacheL12.getmissR()+(float)CacheL12.getmissW())/((float)CacheL12.getmissR()+(float)CacheL12.gethitR()+(float)CacheL12.getmissW()+(float)CacheL12.gethitW());
+	} 
+	if (CI>49642108 && CI<49642129) {///Guarda el estado de los datos para las ultimas 20 instrucciones ejecutadas
+	    outputFile << "Instrucción: " << CI << ". Dirección: " << dir << ". Estado Cache L2: " << CacheL2.read(indexL2, 0).state << endl;
+	    outputFile << "Tag Cache L11: " << CacheL11.read(indexL1, 0).tag <<  ". Estado Cache L11: " << CacheL11.read(indexL1, 0).state << ". Tag Cache L12: " << CacheL12.read(indexL1, 0).tag << ". Estado Cache L12: " << CacheL12.read(indexL1, 0).state << endl;
+	}  
+    }
     
     ///Escribe el resultado en consola.
-    cout << "Catidad de hits por reads para L11: " << CacheL11.gethitR() << endl;
-    cout << "Cantidad de misses por reads para L11: " << CacheL11.getmissR() << endl;
-    cout << "Catidad de hits por writes para L11: " << CacheL11.gethitW() << endl;
-    cout << "Cantidad de misses por writes para L11: " << CacheL11.getmissW() << endl;
-    cout << "Miss rate por reads para L11: " << missrateRL11 << "%. "<< endl;
-    cout << "Miss rate por writes para L11: " << missrateWL11 << "%. "<< endl;
-    cout << "Miss rate total para L11: " << missrateTL11 << "%. "<< endl;
-    cout << "Catidad de hits por reads para L12: " << CacheL12.gethitR() << endl;
-    cout << "Cantidad de misses por reads para L12: " << CacheL12.getmissR() << endl;
-    cout << "Catidad de hits por writes para L12: " << CacheL12.gethitW() << endl;
-    cout << "Cantidad de misses por writes para L12: " << CacheL12.getmissW() << endl;
-    cout << "Miss rate por reads para L12: " << missrateRL12 << "%. "<< endl;
-    cout << "Miss rate por writes para L12: " << missrateWL12 << "%. "<< endl;
-    cout << "Miss rate total para L12: " << missrateTL12 << "%. "<< endl;
+    cout << "El estado final de los datos para las últimas 10 instrucciones de cada procesador se muestra en el archivo MESI_Protocol.txt" << endl;
     
-    /*ofstream outputFile("CacheResults_"+to_string(asoc)+"-"+ to_string(tamL1)+"-" +to_string(tamB)+".txt");
-    outputFile << "Resultados de un cache con: " << "\n\t*tamaño de cache: " << tamL1 << " \n\t*tamaño de bloque: " << tamB << " \n\t*asociatividad: "<< asoc << " way.\n" << endl;
-    outputFile << "Catidad de hits por reads: " << CacheL11.gethitR() << endl;
-    outputFile << "Cantidad de misses por reads: " << CacheL11.getmissR() << endl;
-    outputFile << "Catidad de hits por writes: " << CacheL11.gethitW() << endl;
-    outputFile << "Cantidad de misses por writes: " << CacheL11.getmissW() << endl;
-    outputFile << "Miss rate por reads: " << missrateR << "%. "<< endl;
-    outputFile << "Miss rate por writes: " << missrateW << "%. "<< endl;
-    outputFile << "Miss rate total: " << missrateT << "%. "<< endl;*/
-    //Escribe el resultado en un archivo de texto.
-    
+    ///Se cierran los archivos
     inst.close();
-    //outputFile.close();
+    outputFile.close();
     return 0;
 }
