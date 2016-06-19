@@ -4,7 +4,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     
-    unsigned int dir, maskIndexL1, maskIndexL2, maskOffSet, maskTagL1, maskTagL2;
+    unsigned int dir, maskIndexL1, maskIndexL2, maskOffSet, maskTagL1, maskTagL2, tmpDir;
     int i, remp, CI;
     
     ///Caracteristicas de los caches
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     Cache CacheL12(tamB, tamL1, asoc);
     Cache CacheL2(tamB, tamL2, asoc);
     
-    int OffSet, tagL2, tagL1, indexL2, indexL1;
+    int OffSet, tagL2, tagL1, indexL2, indexL1, tmpIndex, tmpTag;
     
     
     ///Verifica si el archivo .trace se encuentra en el directorio.
@@ -91,6 +91,16 @@ int main(int argc, char* argv[]) {
 					///Se debe actualizar el dato en la memoria anterior
 					CacheL2.write(indexL2, remp, tagL2);
 					CacheL2.setState(indexL2, remp, 2);
+					///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL12.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L12
+					    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
 					///Se copia el dato actualizado en el cache L12
 					CacheL12.write(indexL1, remp, tagL1);
 					CacheL12.setState(indexL1, remp, 2);
@@ -99,6 +109,16 @@ int main(int argc, char* argv[]) {
 				    ///Exclusive
 				    case 1:
 					CacheL12.missRp();
+					///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL12.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L12
+					    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
 					CacheL12.write(indexL1, remp, tagL1);
 					CacheL12.setState(indexL1, remp, 2);
 					CacheL11.setState(indexL1, remp, 2);
@@ -130,6 +150,16 @@ int main(int argc, char* argv[]) {
                     ///Si el tag no coincide o el dato es invalido trae todo un nuevo bloque al cache
                     if(nohit) {
                         CacheL12.missRp();
+			///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL12.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L12
+			    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
 			///Comprueba si el dato esta en el otro cache
 			if (tagL1==CacheL11.read(indexL1, 0).tag) {
 			    switch (CacheL11.read(indexL1, 0).state) {
@@ -193,6 +223,16 @@ int main(int argc, char* argv[]) {
 			if (tagL2!=CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
 			    CacheL2.write(indexL2, remp, tagL2);
 			}
+			///Si el dato de L12 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL12.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L12
+			    tmpDir = CacheL12.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
 			///Reemplaza uno de los bloques al azar
 			CacheL12.write(indexL1, remp, tagL1);     
                     }
@@ -223,7 +263,17 @@ int main(int argc, char* argv[]) {
 					///Se debe actualizar el dato en la memoria anterior
 					CacheL2.write(indexL2, remp, tagL2);
 					CacheL2.setState(indexL2, remp, 2);
-					///Se copia el dato actualizado en el cache L12
+					///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL11.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L11
+					    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
+					///Se copia el dato actualizado en el cache L11
 					CacheL11.write(indexL1, remp, tagL1);
 					CacheL11.setState(indexL1, remp, 2);
 					CacheL12.setState(indexL1, remp, 2);
@@ -231,6 +281,16 @@ int main(int argc, char* argv[]) {
 				    ///Exclusive
 				    case 1:
 					CacheL11.missRp();
+					///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+					if (!CacheL11.read(indexL1, i).state) {
+					    ///Se debe recuperar la direccion almacenada en L11
+					    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+					    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+					    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+					    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+					    CacheL2.write(tmpIndex, remp, tmpTag);
+					    CacheL2.setState(tmpIndex, remp, 1);
+					}
 					CacheL11.write(indexL1, remp, tagL1);
 					CacheL11.setState(indexL1, remp, 2);
 					CacheL12.setState(indexL1, remp, 2);
@@ -262,6 +322,16 @@ int main(int argc, char* argv[]) {
                     ///Si el tag no coincide o el dato es invalido trae todo un nuevo bloque al cache
                     if(nohit) {
                         CacheL11.missRp();
+			///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL11.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L11
+			    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
 			///Comprueba si el dato esta en el otro cache
 			if (tagL1==CacheL12.read(indexL1, 0).tag) {
 			    switch (CacheL12.read(indexL1, 0).state) {
@@ -321,6 +391,16 @@ int main(int argc, char* argv[]) {
                     }
                     ///Si el tag no coincide debe traerse la instruccion de la memoria anterior.
                     if(nohit) {
+			///Si el dato de L11 esta modificado se debe escribir antes de reemplazarse
+			if (!CacheL11.read(indexL1, i).state) {
+			    ///Se debe recuperar la direccion almacenada en L11
+			    tmpDir = CacheL11.read(indexL1, i).tag * pow(2,bOffSet+bIndexL1);
+			    tmpDir += indexL1 * pow(2,bOffSet) + OffSet;
+			    tmpIndex = (tmpDir & maskIndexL2) / pow(2,bOffSet);
+			    tmpTag = (tmpDir & maskTagL2) / pow(2,bOffSet+bIndexL2);
+			    CacheL2.write(tmpIndex, remp, tmpTag);
+			    CacheL2.setState(tmpIndex, remp, 1);
+			}
                         CacheL11.missWp();
 			if (tagL2!=CacheL2.read(indexL2, 0).tag) { ///Verifica si esta en el cache L2
 			    CacheL2.write(indexL2, remp, tagL2);
