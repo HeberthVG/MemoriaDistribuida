@@ -27,6 +27,8 @@ Prime::Prime(int n)
     {
     	if(this->primeV[i]!=0)
     	{
+		this->countPrime++;
+		cout << "Primo: " << primeV[i] << endl;
     		for(int j=i; j*i<=n;++j) this->primeV[j*i]=0;
     	}
     }
@@ -41,7 +43,6 @@ void Prime::print(){
     	if(primeV[i]!=0)
     	{
 			outputFile << i << "\t";
-			this->countPrime++;
 		}
 	}
     outputFile.close();
