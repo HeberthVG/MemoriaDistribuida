@@ -5,7 +5,6 @@ CMP = Cache.o
 OBJS1 = Prime.cpp
 CMP1 = Prime.o
 OBJS2 = PrimeMPI.cpp
-CMP2 = PrimeMPI.o
 
 #Se define el compilador
 CC = g++
@@ -42,8 +41,7 @@ $(TARGET1) : $(OBJS1)
 	
 $(TARGET2):
 $(TARGET2) : $(OBJS2)
-	$(MPI) $(MPIFLAGS) $(OBJS2) -c
-	$(MPI) $(MPIFLAGS) -o $(TARGET2) mainPrimeMPI.cpp $(CMP2)
+	$(MPI) $(MPIFLAGS) $(OBJS2) -o  $(TARGET2)
 
 
 #Al digitar make clean se borraran todos los archivos compilados,
@@ -53,5 +51,4 @@ clean:
 	rm -rf ∗.o *.gch *.dSYM $(TARGET)
 	rm -rf ∗.o *.gch *.dSYM $(CMP1)
 	rm -rf ∗.o *.gch *.dSYM $(TARGET1)
-	rm -rf ∗.o *.gch *.dSYM $(CMP2)
 	rm -rf ∗.o *.gch *.dSYM $(TARGET2)
