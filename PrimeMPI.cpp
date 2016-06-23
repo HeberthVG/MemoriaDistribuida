@@ -39,19 +39,18 @@ int main(int argc, char ** argv)
     
     int prime[n]; //Se define el vector de numeros y se inicializa
     prime[0]=0;
-    for(int i=1; i<n;i++) prime[i]=i+1;
-
-    int c=0; //Se iniciliza contador de primos encontrados
+    prime[1]=0;
+    for(int i=2; i<n;i++) prime[i]=i;
     
     //Alterna los numeros que revisa segun el proceso que sea
-    for(int i=1+id; prime[i]*prime[i]<=n;i+=procs)
+    for(int i=2+id; i*i<=n;i+=procs)
     {
 	//Si el numero no se ha borrado (es primo) se borran todos sus multiplos
         if(prime[i]!=0)
         {
-            for(int j=i+1; j*prime[i]<=n;j++)
+            for(int j=i; j*i<=n;j++)
             {
-                prime[j*(i+1)-1]=0;
+                prime[j*i]=0;
             }
         }
     }
@@ -72,18 +71,20 @@ int main(int argc, char ** argv)
     //EL proceso master se encarga de imprimir los resultados
     if(id==0)
     {
-        cout<<"Imprimiendo los numeros primos...\n";
+        int c=0; //Se iniciliza contador de primos encontrados
+        ///Se crea el archivo de salida
+        ofstream outputFile("PrimeNumbersMPI.txt");
         for(int i=0; i<n;i++)
         {
             if(p[i]!=0)  //Se imprimen solo los numeros primos del vector
             {
-                cout << ' ' << p[i];
+                outputFile << i << "\t";
         	c++;
             }
         }
         cout<<endl;
-        cout<<"Se encontraron "<<c<<" números primos."<<endl;
-        cout << "\nTiempo de ejecución  " << time << "s\n";
+        cout<<"Se encontraron "<<c<<" números primos. Refierase a PrimeNumbers.txt para ver los números primos encontrados"<<endl;
+        cout << "\nTiempo de ejecución  " << time << "s.\n"<<endl;
     }  
     
     return 0;
