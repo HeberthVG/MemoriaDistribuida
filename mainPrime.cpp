@@ -6,7 +6,7 @@ int main() {
     
     clock_t begin = clock();
     
-    Prime newPrime(48617);
+    Prime newPrime(48616);
 
     clock_t end = clock();
     double time = double(end - begin) / CLOCKS_PER_SEC;
