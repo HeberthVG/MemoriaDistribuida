@@ -41,17 +41,16 @@ int main(int argc, char ** argv)
     
     int prime[n];
     prime[0]=0;
-    for(int i=1; i<n;i++) prime[i]=i+1;
-
-    int c=0;
+    prime[1]=0;
+    for(int i=2; i<n;i++) prime[i]=i;
     
-    for(int i=1+id; prime[i]*prime[i]<=n;i+=procs)
+    for(int i=2+id; i*i<=n;i+=procs)
     {
         if(prime[i]!=0)
         {
-            for(int j=i; prime[j]*prime[i]<=n;j++)
+            for(int j=i; j*i<=n;j++)
             {
-                prime[(j+1)*(i+1)-1]=0;
+                prime[j*i]=0;
             }
         }
     }
@@ -62,7 +61,6 @@ int main(int argc, char ** argv)
     //Se reciben los datos.
     
     int p[n];
-    int ct;
     MPI_Reduce(&prime, p, n, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
     
     MPI_Finalize();
@@ -70,12 +68,14 @@ int main(int argc, char ** argv)
     double time = end - begin;
     if(id==0)
     {
-        cout<<"Imprimiendo los numeros primos...\n";
+        int c=0;
+        ///Se crea el archivo de salida
+        ofstream outputFile("PrimeNumbersMPI.txt");
         for(int i=0; i<n;i++)
         {
             if(p[i]!=0)
             {
-                cout << ' ' << p[i];
+                outputFile<< i << "\t";
         	c++;
             }
         }
