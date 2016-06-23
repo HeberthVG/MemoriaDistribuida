@@ -23,11 +23,11 @@ using namespace std;
 
 int main(int argc, char ** argv)
 {
-    clock_t begin = clock();
     
-    int n=5000;
+    int n=100;//48616;
     int procs, id, largo, rc;
     char host[MPI_MAX_PROCESSOR_NAME];
+    double begin, end;
     
     rc = MPI_Init(&argc, &argv);
     
@@ -37,49 +37,53 @@ int main(int argc, char ** argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
     MPI_Get_processor_name(host, &largo);
     
+    begin=MPI_Wtime();
+    
     int prime[n];
-    if(id==0)
-    {
-        prime[0]=0;
-        prime[1]=0;
-        for(int i=2; i<=n;i++) prime[i]=i;
-    }
+    prime[0]=0;
+    for(int i=1; i<n;i++) prime[i]=i+1;
+
+    int c=0;
     
-    MPI_Bcast(&prime, n, MPI_INT, 0, MPI_COMM_WORLD);
-    
-    for(int i=2+id; i*i<=n;i+=procs)
+    for(int i=1+id; prime[i]*prime[i]<=n;i+=procs)
     {
         if(prime[i]!=0)
         {
-            for(int j=i; j*i<=n;++j)
+            for(int j=i; prime[j]*prime[i]<=n;j++)
             {
-                prime[j*i]=0;
+                prime[(j+1)*(i+1)-1]=0;
             }
         }
     }
+    
+    end=MPI_Wtime();
     
     MPI_Barrier(MPI_COMM_WORLD);
     //Se reciben los datos.
+    
     int p[n];
-    MPI_Reduce(&prime, p, n, MPI_INT, MPI_PROD, 0, MPI_COMM_WORLD);
+    int ct;
+    MPI_Reduce(&prime, p, n, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
     
     MPI_Finalize();
-
+    
+    double time = end - begin;
     if(id==0)
     {
         cout<<"Imprimiendo los numeros primos...\n";
-        for(int i=2; i<=n;++i)
+        for(int i=0; i<n;i++)
         {
             if(p[i]!=0)
             {
-                cout << ' ' << i;
+                cout << ' ' << p[i];
+        	c++;
             }
         }
         cout<<endl;
-    }
-    clock_t end = clock();
-    double time = double(end - begin) / CLOCKS_PER_SEC;
-    cout << "\nTiempo de ejecución  " << time << "s\n";
+        cout<<"Se encontraron "<<c<<" números primos."<<endl;
+        cout << "\nTiempo de ejecución  " << time << "s\n";
+    }  
+    
     return 0;
 }
 
