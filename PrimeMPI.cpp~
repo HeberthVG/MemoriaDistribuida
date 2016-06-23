@@ -6,7 +6,9 @@
  Tarea Programada 2
  Carlos Solano       B36685
  Heberth Valverde    B37174
-*/
+ */
+
+//
 
 #include <iostream>
 #include <fstream>
