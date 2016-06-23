@@ -39,32 +39,19 @@ int main(int argc, char ** argv)
     
     int prime[n]; //Se define el vector de numeros y se inicializa
     prime[0]=0;
-<<<<<<< HEAD
     for(int i=1; i<n;i++) prime[i]=i+1;
 
     int c=0; //Se iniciliza contador de primos encontrados
     
     //Alterna los numeros que revisa segun el proceso que sea
     for(int i=1+id; prime[i]*prime[i]<=n;i+=procs)
-=======
-    prime[1]=0;
-    for(int i=2; i<n;i++) prime[i]=i;
-    
-    for(int i=2+id; i*i<=n;i+=procs)
->>>>>>> 1ff01f90dec82e755d5334067f9a3d14e223e1ca
     {
 	//Si el numero no se ha borrado (es primo) se borran todos sus multiplos
         if(prime[i]!=0)
         {
-<<<<<<< HEAD
             for(int j=i+1; j*prime[i]<=n;j++)
             {
                 prime[j*(i+1)-1]=0;
-=======
-            for(int j=i; j*i<=n;j++)
-            {
-                prime[j*i]=0;
->>>>>>> 1ff01f90dec82e755d5334067f9a3d14e223e1ca
             }
         }
     }
@@ -75,6 +62,7 @@ int main(int argc, char ** argv)
     //Se reciben los datos.
     
     int p[n];
+    int ct;
     MPI_Reduce(&prime, p, n, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
     
     MPI_Finalize();
@@ -84,14 +72,12 @@ int main(int argc, char ** argv)
     //EL proceso master se encarga de imprimir los resultados
     if(id==0)
     {
-        int c=0;
-        ///Se crea el archivo de salida
-        ofstream outputFile("PrimeNumbersMPI.txt");
+        cout<<"Imprimiendo los numeros primos...\n";
         for(int i=0; i<n;i++)
         {
             if(p[i]!=0)  //Se imprimen solo los numeros primos del vector
             {
-                outputFile<< i << "\t";
+                cout << ' ' << p[i];
         	c++;
             }
         }
