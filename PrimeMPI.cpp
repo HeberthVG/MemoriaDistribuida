@@ -24,7 +24,7 @@ using namespace std;
 int main(int argc, char ** argv)
 {
     
-    int n=100;//48616;
+    int n=48616;
     int procs, id, largo, rc;
     char host[MPI_MAX_PROCESSOR_NAME];
     double begin, end;
