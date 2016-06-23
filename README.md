@@ -14,7 +14,7 @@ CHANGELOG:
 REQUIREMENTS:
 
     -C++ compiler g++.
-    -iostream, fstream, cmath, ctime, cstdlib, openmpi libraries.
+    -iostream, fstream, cmath, ctime, cstdlib, openmpi libraries, mpi.
     -make
     
 INSTALL:
@@ -27,5 +27,10 @@ RUN:
 
     For test MESI protocol:
     $ ./Run  
+    For test Sieve of Eratosthenes:
+    $ ./RunPrime
+    For test Sieve of Eratosthenes MPI:
+    $ mpiexec -np x ./RunPrime
+        Where x is the number of processes.
 
 NOTE: please put and rename "*.trace" to "memory.trace" into ~/"path-to"/MemoriaDistribuida/
